@@ -1,8 +1,10 @@
-package domain
+package model
 
 import (
 	"errors"
 	"time"
+
+	"github.com/google/uuid" // Import for UUID
 )
 
 // Predefined domain errors
@@ -14,22 +16,36 @@ var (
 	ErrInvoiceNotDraft           = errors.New("invoice can only be marked as sent from draft status")
 	ErrVoidInvoiceCannotBePaid   = errors.New("void invoice cannot be marked as paid")
 	ErrPaidInvoiceCannotBeVoided = errors.New("paid invoice cannot be voided")
+	ErrInvoiceNotFound           = errors.New("invoice not found") // Added
 )
 
 // InvoiceID represents the unique identifier for an Invoice.
-type InvoiceID string
+type InvoiceID uuid.UUID
 
-// InvoiceStatus represents the status of an invoice.
-type InvoiceStatus string
+// NewInvoiceID generates a new unique InvoiceID.
+func NewInvoiceID() InvoiceID {
+	return InvoiceID(uuid.New())
+}
 
-const (
-	InvoiceStatusDraft   InvoiceStatus = "Draft"
-	InvoiceStatusSent    InvoiceStatus = "Sent"
-	InvoiceStatusPaid    InvoiceStatus = "Paid"
-	InvoiceStatusOverdue InvoiceStatus = "Overdue"
-	InvoiceStatusVoid    InvoiceStatus = "Void"
-	InvoiceStatusUnpaid  InvoiceStatus = "Unpaid"
-)
+// String returns the string representation of the InvoiceID.
+func (id InvoiceID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// IsNil checks if the InvoiceID is the nil UUID.
+func (id InvoiceID) IsNil() bool {
+	return uuid.UUID(id) == uuid.Nil
+}
+
+// ParseInvoiceID parses a string into an InvoiceID.
+// Returns uuid.Nil and error if parsing fails.
+func ParseInvoiceID(s string) (InvoiceID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return InvoiceID(uuid.Nil), err
+	}
+	return InvoiceID(id), nil
+}
 
 // InvoiceLine represents a single line item on an invoice.
 type InvoiceLine struct {
@@ -41,6 +57,7 @@ type InvoiceLine struct {
 }
 
 type Invoices = []Invoice
+
 // Invoice represents the aggregate root for an invoice.
 type Invoice struct {
 	ID                    InvoiceID
@@ -52,6 +69,7 @@ type Invoice struct {
 	TotalAmountWithoutTax float64
 	TotalAmountWithTax    float64
 	Status                InvoiceStatus
+	InvoiceNumber         string
 }
 
 // AddLine adds a new line item to the invoice.
