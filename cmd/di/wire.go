@@ -86,8 +86,7 @@ func ProvideHealthController() mcpAPI.HealthController {
 
 // --- Invoice Feature Providers ---
 func ProvideInvoiceSqlClient(db *gorm.DB, cfg *config.Config) invoiceSQL.InvoiceSqlClient {
-	maxRetries := 3
-	return invoiceSQL.NewInvoiceSqlClient(db, maxRetries)
+	return invoiceSQL.NewInvoiceSqlClient(db, cfg.Database.MaxRetries)
 }
 
 func ProvideInvoiceSqlConverter() invoiceSQL.InvoiceSqlConverter {

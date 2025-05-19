@@ -13,25 +13,21 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	DBName   string `yaml:"dbname"`
-	SSLMode  string `yaml:"sslmode"`
-}
-
-type PersistenceConfig struct {
-	SqlClientMaxRetries int `yaml:"sqlClientMaxRetries"`
+	Host       string `yaml:"host"`
+	Port       int    `yaml:"port"`
+	User       string `yaml:"user"`
+	Password   string `yaml:"password"`
+	DBName     string `yaml:"dbname"`
+	SSLMode    string `yaml:"sslmode"`
+	MaxRetries int    `yaml:"maxRetries"`
 }
 
 // Config holds the application configuration.
 type Config struct {
-	Server      ServerConfig      `yaml:"server"`
-	Database    DatabaseConfig    `yaml:"database"`
-	Persistence PersistenceConfig `yaml:"persistence"`
-	LogLevel    string            `yaml:"logLevel"`
-}
+	Server   ServerConfig   `yaml:"server"`
+	Database DatabaseConfig `yaml:"database"`
+	LogLevel string         `yaml:"logLevel"`
+}		
 
 // LoadConfig loads configuration from the given YAML file path.
 func LoadConfig(configPath string) (*Config, error) {
@@ -54,8 +50,8 @@ func LoadConfig(configPath string) (*Config, error) {
 	if cfg.Database.SSLMode == "" {
 		cfg.Database.SSLMode = "disable" // Default SSLMode
 	}
-	if cfg.Persistence.SqlClientMaxRetries == 0 {
-		cfg.Persistence.SqlClientMaxRetries = 3 // Default MaxRetries
+	if cfg.Database.MaxRetries == 0 {
+		cfg.Database.MaxRetries = 3 // Default MaxRetries
 	}
 
 	return &cfg, nil

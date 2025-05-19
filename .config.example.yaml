@@ -8,5 +8,5 @@ database:
   password: "yoursecurepassword"
   dbname: "billing_db"
   sslmode: "disable" # or "require", "verify-full", etc.
-logLevel: "info" 
-  
+  maxRetries: 3
+logLevel: "info"

@@ -18,12 +18,13 @@ func TestLoadConfig_Success(t *testing.T) {
 			Port: "8080",
 		},
 		Database: DatabaseConfig{
-			Host:     "localhost",
-			Port:     5432,
-			User:     "billing_user",
-			Password: "yoursecurepassword",
-			DBName:   "billing_db",
-			SSLMode:  "disable",
+			Host:       "localhost",
+			Port:       5432,
+			User:       "billing_user",
+			Password:   "yoursecurepassword",
+			DBName:     "billing_db",
+			SSLMode:    "disable",
+			MaxRetries: 3, // Added MaxRetries
 		},
 		LogLevel: "info",
 	}
@@ -62,6 +63,7 @@ logLevel: "debug"
 
 	assert.Equal(t, "8080", cfg.Server.Port, "Default server port should be applied")
 	assert.Equal(t, "disable", cfg.Database.SSLMode, "Default SSL mode should be applied")
+	assert.Equal(t, 3, cfg.Database.MaxRetries, "Default MaxRetries should be applied")
 
 	// Check other values are loaded correctly
 	assert.Equal(t, "testhost", cfg.Server.Host)
