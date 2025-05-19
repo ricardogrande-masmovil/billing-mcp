@@ -1,0 +1,25 @@
+services:  
+  db:
+    image: postgres:15
+    ports:
+      - "${DB_PORT_HOST:-5432}:5432" # Exposes PostgreSQL port to the host (optional, for direct access)
+    environment:
+      POSTGRES_USER: ${DB_USER:-billing}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-billing_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist database data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-billing} -d ${DB_NAME:-billing_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - billing-network
+
+volumes:
+  postgres_data:
+
+networks:
+  billing-network:
+    driver: bridge
