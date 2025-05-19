@@ -3,7 +3,7 @@ package sql
 import (
 	"time"
 
-	commons "github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence/gorm"
+	commons "github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 )
 
 // DBInvoice represents the invoice entity in the database.

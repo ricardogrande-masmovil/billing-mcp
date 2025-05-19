@@ -12,7 +12,7 @@ import (
 
 type InvoiceService interface {
 	GetInvoiceByID(id domain.InvoiceID) (domain.Invoice, error)
-	GetInvoicesByCriteria(criteria domain.Criteria) (domain.Invoices, error)
+	GetInvoicesByCriteria(accountId string, criteria domain.Criteria) (domain.Invoices, error)
 }
 
 type controller struct {
@@ -75,7 +75,7 @@ func (c controller) GetInvoices(ctx context.Context, request mcp.CallToolRequest
 		},
 	}
 
-	_, err = c.service.GetInvoicesByCriteria(criteria)
+	_, err = c.service.GetInvoicesByCriteria("", criteria)
 	if err != nil {
 		c.logger.Error().Err(err).Msg("Failed to fetch invoices by criteria")
 		return nil, err

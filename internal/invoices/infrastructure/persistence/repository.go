@@ -13,18 +13,20 @@ type Repository struct {
 	invoiceSqlClient sql.InvoiceSqlClient
 }
 
-func NewRepository(invoiceSqlClient sql.InvoiceSqlClient) Repository {
+func NewRepository(invoiceSqlClient sql.InvoiceSqlClient, converter sql.InvoiceSqlConverter) Repository { // Inject converter
 	return Repository{
-		converter:        sql.NewInvoiceSqlConverter(),
+		converter:        converter, // Use injected converter
 		invoiceSqlClient: invoiceSqlClient,
 		logger:           log.With().Str("component", "InvoicesPersistenceRepository").Logger(),
 	}
 }
 
-func (r Repository) GetInvoiceByID(id string) (invoice domain.Invoice, err error) {
-	r.logger.Info().Str("id", id).Msg("Fetching invoice by ID")
+func (r Repository) GetInvoiceByID(id domain.InvoiceID) (invoice domain.Invoice, err error) { // Changed id to domain.InvoiceID
+	r.logger.Info().Str("id", id.String()).Msg("Fetching invoice by ID") // Use id.String()
 
-	invoiceSqlModel, err := r.invoiceSqlClient.GetInvoiceByID(id)
+	// Assuming invoiceSqlClient.GetInvoiceByID still expects a string.
+	// If it can take domain.InvoiceID directly, this conversion is not needed.
+	invoiceSqlModel, err := r.invoiceSqlClient.GetInvoiceByID(id.String())
 	if err != nil {
 		r.logger.Error().Err(err).Msg("Failed to fetch invoice by ID")
 		return
@@ -38,11 +40,11 @@ func (r Repository) GetInvoiceByID(id string) (invoice domain.Invoice, err error
 
 	// TODO: fetch invoice lines and convert them to domain model
 
-	r.logger.Info().Str("id", id).Msg("Fetched invoice by ID")
+	r.logger.Info().Str("id", id.String()).Msg("Fetched invoice by ID")
 	return
 }
 
-func (r Repository) GetInvoicesByAccount(accountId string, criteria domain.Criteria) (invoices domain.Invoices, err error) {
+func (r Repository) GetInvoicesByAccountId(accountId string, criteria domain.Criteria) (invoices domain.Invoices, err error) { // Renamed from GetInvoicesByAccount
 	r.logger.Info().Str("account_id", accountId).Interface("criteria", criteria).Msg("Fetching invoices by criteria")
 
 	invoiceSqlModels, err := r.invoiceSqlClient.GetInvoicesByAccountId(accountId, r.converter.ConvertCriteriaToSql(criteria))

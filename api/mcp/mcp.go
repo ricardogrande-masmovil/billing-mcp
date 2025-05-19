@@ -6,8 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 	mcpSdk "github.com/mark3labs/mcp-go/mcp"
 	serverSdk "github.com/mark3labs/mcp-go/server"
-	"github.com/ricardogrande-masmovil/billing-mcp/api"
-	invoicesPorts "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/ports"
 )
 
 // Http Controllers
@@ -33,19 +31,14 @@ func NewMCPServer(healthController HealthController, invoicesController Invoices
 	}
 }
 
-func Setup(e *echo.Echo, s *serverSdk.MCPServer) (err error) {
-	healthCtrl := api.NewHealthController()
-	invoicesCtrl := invoicesPorts.NewController()
-
-	mcp := NewMCPServer(healthCtrl, invoicesCtrl)
-
+func Setup(e *echo.Echo, s *serverSdk.MCPServer, mcpServer *MCPServer) (err error) {
 	sse := serverSdk.NewSSEServer(s,
 		serverSdk.WithHTTPServer(e.Server),
 		serverSdk.WithUseFullURLForMessageEndpoint(true),
 	)
 
-	registerHandlers(e, sse, mcp)
-	registerTools(s, mcp)
+	registerHandlers(e, sse, mcpServer)
+	registerTools(s, mcpServer)
 
 	return
 }
@@ -58,7 +51,6 @@ func registerHandlers(e *echo.Echo, sse *serverSdk.SSEServer, mcp *MCPServer) {
 }
 
 func registerTools(s *serverSdk.MCPServer, mcp *MCPServer) {
-	// Register tools
 	s.AddTool(invoiceTool, mcp.InvoicesController.GetInvoice)
 	s.AddTool(invoicesTool, mcp.InvoicesController.GetInvoices)
 }

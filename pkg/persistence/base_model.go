@@ -1,4 +1,4 @@
-package gorm
+package persistence
 
 import (
 	"time"

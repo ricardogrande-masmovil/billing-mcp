@@ -4,6 +4,7 @@ go 1.23.5
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/google/wire v0.6.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/mark3labs/mcp-go v0.28.0
 	github.com/rs/zerolog v1.34.0

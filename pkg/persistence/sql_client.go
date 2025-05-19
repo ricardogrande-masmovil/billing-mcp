@@ -1,4 +1,4 @@
-package gorm
+package persistence
 
 import (
 	"errors"
@@ -25,10 +25,10 @@ func (z *ZerologGormWriter) Printf(format string, args ...interface{}) {
 	z.logger.Printf(format, args...)
 }
 
-// NewDB initializes and returns a new Gorm DB instance for PostgreSQL.
+// NewSqlClient initializes and returns a new Gorm DB instance for PostgreSQL.
 // dsn is the Data Source Name for connecting to the PostgreSQL database.
 // Example DSN: "host=localhost user=gorm password=gorm dbname=gorm port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-func NewDB(dsn string) (*gorm.DB, error) {
+func NewSqlClient(dsn string) (*gorm.DB, error) {
 	gormLog := log.With().Str("component", "gorm").Logger()
 
 	gormDBLogger := gormlogger.New(

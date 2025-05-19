@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,78 +11,70 @@ import (
 	"github.com/labstack/echo/v4"
 	mcpServerSdk "github.com/mark3labs/mcp-go/server"
 	"github.com/ricardogrande-masmovil/billing-mcp/api/mcp"
+	"github.com/ricardogrande-masmovil/billing-mcp/cmd/di"
 	"github.com/ricardogrande-masmovil/billing-mcp/config"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 var (
 	configFile = ".config.yaml"
-
-	logger = log.With().Str("module", "main").Logger()
 )
 
 func main() {
-	ctx := context.Background()
-	cfg, err := config.LoadConfig(configFile)
+	app, cleanup, err := di.InitializeApp(configFile)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to load config")
+		fmt.Fprintf(os.Stderr, "Failed to initialize application: %v\n", err)
+		os.Exit(1)
 	}
+	defer cleanup()
 
-	// Initialize the logger
-	InitLogger(cfg.LogLevel)
-
+	logger := app.Logger
+	logger.Info().Msg("Successfully initialized application dependencies")
 	logger.Info().Msg("Starting the application...")
+
+	ctx := context.Background()
 
 	exitChannel := make(chan bool, 1)
 
-	go InitMCP(ctx, exitChannel)
+	go InitMCP(ctx, app.Echo, app.MCPServer, app.MCPServerAPI, app.Config, app.Logger, exitChannel)
 
-	// Run until SIGTERM or SIGINTERRUPT is received
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	<-quit
 
 	logger.Info().Msg("Received shutdown signal, shutting down...")
 	exitChannel <- true
+	<-exitChannel
+	logger.Info().Msg("Application shutdown complete.")
 }
 
-func InitMCP(ctx context.Context, exitChan chan bool) {
-	e := echo.New()
-	s := mcpServerSdk.NewMCPServer("billing", "0.0.1")
-
-	err := mcp.Setup(e, s)
+func InitMCP(ctx context.Context, e *echo.Echo, sdkServer *mcpServerSdk.MCPServer, appMCPServer *mcp.MCPServer, cfg *config.Config, logger zerolog.Logger, exitChan chan bool) {
+	err := mcp.Setup(e, sdkServer, appMCPServer)
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to setup MCP server")
 	}
 
+	serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+	logger.Info().Str("address", serverAddr).Msg("Starting MCP server...")
+
 	go func() {
-		// TODO: define port in config
-		err := e.Start(":8080")
-		if err != nil {
+		if err := e.Start(serverAddr); err != nil {
 			logger.Error().Err(err).Msg("Failed to start MCP server")
+		} else {
+			logger.Info().Msg("MCP server stopped.")
 		}
 	}()
 
-	// Shutdown MCP server gracefully and propagate the exit signal
-	exit := <-exitChan
-	exitChan <- exit
+	<-exitChan
 
 	logger.Warn().Msg("Shutting down MCP server...")
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if err := e.Shutdown(ctx); err != nil {
-		logger.Error().Err(err).Msg("Failed to shutdown MCP server")
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		logger.Error().Err(err).Msg("Failed to shutdown MCP server gracefully")
+	} else {
+		logger.Info().Msg("MCP server shutdown complete")
 	}
-	logger.Info().Msg("MCP server shutdown complete")
-}
-
-func InitLogger(level string) {
-	// TODO: setup logging level in config
-	logLevel, err := zerolog.ParseLevel(level)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to parse log level")
-	}
-	zerolog.SetGlobalLevel(logLevel)
+	exitChan <- true
 }
