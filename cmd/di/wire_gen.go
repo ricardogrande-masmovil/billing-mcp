@@ -36,7 +36,7 @@ func InitializeApp(configFile string) (*App, func(), error) {
 		return nil, nil, err
 	}
 	echo := ProvideEcho()
-	mcpServer := ProvideMCPServer()
+	mcpServer := ProvideMCP(config)
 	healthController := ProvideHealthController()
 	invoiceSqlClient := ProvideInvoiceSqlClient(db, config)
 	invoiceSqlConverter := ProvideInvoiceSqlConverter()
@@ -111,8 +111,8 @@ func ProvideEcho() *echo.Echo {
 	return echo.New()
 }
 
-func ProvideMCPServer() *server.MCPServer {
-	return server.NewMCPServer("billing-mcp", "0.0.1")
+func ProvideMCP(cfg *config.Config) *server.MCPServer {
+	return server.NewMCPServer("billing-mcp", cfg.Version)
 }
 
 // Provider for the API specific MCPServer
@@ -155,7 +155,7 @@ var CoreSet = wire.NewSet(
 	ProvideLogger,
 	ProvideDB,
 	ProvideEcho,
-	ProvideMCPServer,
+	ProvideMCP,
 	ProvideMCPServerAPI,
 	ProvideHealthController,
 )

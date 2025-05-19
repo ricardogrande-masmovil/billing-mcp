@@ -71,8 +71,8 @@ func ProvideEcho() *echo.Echo {
 	return echo.New()
 }
 
-func ProvideMCPServer() *mcpServerSdk.MCPServer {
-	return mcpServerSdk.NewMCPServer("billing-mcp", "0.0.1")
+func ProvideMCP(cfg *config.Config) *mcpServerSdk.MCPServer {
+	return mcpServerSdk.NewMCPServer("billing-mcp", cfg.Version)
 }
 
 // Provider for the API specific MCPServer
@@ -115,8 +115,8 @@ var CoreSet = wire.NewSet(
 	ProvideLogger,
 	ProvideDB,
 	ProvideEcho,
-	ProvideMCPServer,
-	ProvideMCPServerAPI, // Added provider to the set
+	ProvideMCP,
+	ProvideMCPServerAPI,
 	ProvideHealthController,
 )
 

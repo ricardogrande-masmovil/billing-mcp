@@ -27,7 +27,8 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	LogLevel string         `yaml:"logLevel"`
-}		
+	Version  string         `yaml:"version"`
+}
 
 // LoadConfig loads configuration from the given YAML file path.
 func LoadConfig(configPath string) (*Config, error) {

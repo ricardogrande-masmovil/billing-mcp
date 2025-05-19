@@ -27,6 +27,7 @@ func TestLoadConfig_Success(t *testing.T) {
 			MaxRetries: 3, // Added MaxRetries
 		},
 		LogLevel: "info",
+		Version:  "0.0.1",
 	}
 
 	cfg, err := LoadConfig(configPath)
@@ -55,6 +56,7 @@ database:
   password: "testpass"
   dbname: "testdb"
 logLevel: "debug"
+version: "0.0.1"
 `)
 	require.NoError(t, os.WriteFile(tempFile, content, 0600), "Failed to write temp config file")
 

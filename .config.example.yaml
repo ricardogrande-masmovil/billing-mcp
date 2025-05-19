@@ -10,3 +10,4 @@ database:
   sslmode: "disable" # or "require", "verify-full", etc.
   maxRetries: 3
 logLevel: "info"
+version: "0.0.1"
