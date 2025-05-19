@@ -8,19 +8,28 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	mcpServerSdk "github.com/mark3labs/mcp-go/server"
 	"github.com/ricardogrande-masmovil/billing-mcp/api/mcp"
+	"github.com/ricardogrande-masmovil/billing-mcp/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	mcpServerSdk "github.com/mark3labs/mcp-go/server"
 )
 
-var logger = log.With().Str("module", "main").Logger()
+var (
+	configFile = ".config.yaml"
+
+	logger = log.With().Str("module", "main").Logger()
+)
 
 func main() {
 	ctx := context.Background()
+	cfg, err := config.LoadConfig(configFile)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to load config")
+	}
 
 	// Initialize the logger
-	InitLogger("debug")
+	InitLogger(cfg.LogLevel)
 
 	logger.Info().Msg("Starting the application...")
 
