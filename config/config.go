@@ -69,3 +69,16 @@ func (c *Config) GetDSN() string {
 		c.Database.SSLMode,
 	)
 }
+
+// GetMigrateDSN constructs the Data Source Name (DSN) for golang-migrate, which needs to be in a URL format.
+//   This is different from the DSN used by gorm. Example: postgresql://user:password@host:port/dbname?sslmode=disable
+func (c *Config) GetMigrateDSN() string {
+	return fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=%s",
+		c.Database.User,
+		c.Database.Password,
+		c.Database.Host,
+		c.Database.Port,
+		c.Database.DBName,
+		c.Database.SSLMode,
+	)
+}

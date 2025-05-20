@@ -9,19 +9,24 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/labstack/echo/v4"
 	mcpServerSdk "github.com/mark3labs/mcp-go/server"
 	"github.com/ricardogrande-masmovil/billing-mcp/api/mcp"
 	"github.com/ricardogrande-masmovil/billing-mcp/cmd/di"
 	"github.com/ricardogrande-masmovil/billing-mcp/config"
 	"github.com/rs/zerolog"
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+)
+
+const (
+	defaultConfigFile  = ".config.yaml"
+	migrationFilesPath = "file://database/migrations"
 )
 
 var (
-	configFile = ".config.yaml" // Default
+	configFile = defaultConfigFile // Use constant for default
 )
 
 func main() {
@@ -96,43 +101,40 @@ func InitMCP(ctx context.Context, e *echo.Echo, sdkServer *mcpServerSdk.MCPServe
 }
 
 func RunMigrations(cfg *config.Config, logger zerolog.Logger) error {
-	migrationPath := "file://database/migrations"
+	migrateDBURL := cfg.GetMigrateDSN()
 
-	// For postgres, we need to ensure the DSN is in the format expected by the migrate tool
-	// which is slightly different from gorm's DSN. Specifically, it needs to be a URL.
-	// Example: postgresql://user:password@host:port/dbname?sslmode=disable
-	migrateDBURL := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=%s",
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.Host,
-		cfg.Database.Port,
-		cfg.Database.DBName,
-		cfg.Database.SSLMode)
+	logger.Info().Str("migrationPath", migrationFilesPath).Str("dbURL", migrateDBURL).Msg("Attempting to run migrations")
 
-	logger.Info().Str("migrationPath", migrationPath).Str("dbURL", migrateDBURL).Msg("Attempting to run migrations")
-
-	m, err := migrate.New(migrationPath, migrateDBURL)
+	m, err := migrate.New(migrationFilesPath, migrateDBURL)
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
+	defer func() {
+		sourceErr, dbErr := m.Close()
+		if sourceErr != nil {
+			logger.Error().Err(sourceErr).Msg("Error closing migration source")
+		}
+		if dbErr != nil {
+			logger.Error().Err(dbErr).Msg("Error closing migration database connection")
+		}
+	}()
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to apply migrations: %w", err)
+	upErr := m.Up()
+
+	if upErr != nil && upErr != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply migrations: %w", upErr)
 	}
 
-	version, dirty, err := m.Version()
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed to get migration version after applying")
+	version, dirty, versionErr := m.Version()
+
+	if versionErr != nil {
+		logger.Error().Err(versionErr).Msg("Failed to retrieve migration version status after process.")
 	} else {
-		logger.Info().Uint32("version", uint32(version)).Bool("dirty", dirty).Msg("Migrations applied successfully")
-	}
-
-	sourceErr, dbErr := m.Close()
-	if sourceErr != nil {
-		logger.Error().Err(sourceErr).Msg("Error closing migration source")
-	}
-	if dbErr != nil {
-		logger.Error().Err(dbErr).Msg("Error closing migration database connection")
+		if upErr == migrate.ErrNoChange {
+			logger.Info().Uint32("version", uint32(version)).Bool("dirty", dirty).Msg("No new migrations to apply. Database is up to date.")
+		} else {
+			logger.Info().Uint32("version", uint32(version)).Bool("dirty", dirty).Msg("Migrations successfully processed. Database is up to date.")
+		}
 	}
 
 	return nil
