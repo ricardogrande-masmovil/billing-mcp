@@ -1,0 +1,48 @@
+services:  
+  db:
+    image: postgres:15
+    ports:
+      - "${DB_PORT_HOST:-5432}:5432" # Exposes PostgreSQL port to the host (optional, for direct access)
+    environment:
+      POSTGRES_USER: ${DB_USER:-billing}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-billing_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist database data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-billing} -d ${DB_NAME:-billing_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - billing-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./.config.yaml:/app/.config.yaml:ro
+    environment:
+      CONFIG_PATH: /app/.config.yaml # Tells the app where to find the config file
+      # Add any other environment variables your app might need to override config
+      # e.g., for database connection if you prefer env vars over config file for Docker
+      # DB_HOST: db
+      # DB_PORT: 5432
+      # DB_USER: ${DB_USER:-billing}
+      # DB_PASSWORD: ${DB_PASSWORD:-password}
+      # DB_NAME: ${DB_NAME:-billing_db}
+    networks:
+      - billing-network
+
+volumes:
+  postgres_data:
+
+networks:
+  billing-network:
+    driver: bridge

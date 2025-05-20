@@ -17,5 +17,8 @@ var (
 		"GetInvoices",
 		mcp.WithDescription("Get all invoices for an account"),
 		mcp.WithString("accountId", mcp.Required(), mcp.Description("The ID of the account to retrieve invoices for")),
+		mcp.WithString("status", mcp.Description("The status of the invoices to retrieve")),
+		mcp.WithString("issueDateFrom", mcp.Description("The start date of the invoices to retrieve in RFC3339 format")),
+		mcp.WithString("issueDateTo", mcp.Description("The end date of the invoices to retrieve in RFC3339 format")),
 	)
 )

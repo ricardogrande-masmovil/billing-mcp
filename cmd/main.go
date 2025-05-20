@@ -2,77 +2,140 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/labstack/echo/v4"
-	"github.com/ricardogrande-masmovil/billing-mcp/api/mcp"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	mcpServerSdk "github.com/mark3labs/mcp-go/server"
+	"github.com/ricardogrande-masmovil/billing-mcp/api/mcp"
+	"github.com/ricardogrande-masmovil/billing-mcp/cmd/di"
+	"github.com/ricardogrande-masmovil/billing-mcp/config"
+	"github.com/rs/zerolog"
 )
 
-var logger = log.With().Str("module", "main").Logger()
+const (
+	defaultConfigFile  = ".config.yaml"
+	migrationFilesPath = "file://database/migrations"
+)
+
+var (
+	configFile = defaultConfigFile // Use constant for default
+)
 
 func main() {
-	ctx := context.Background()
+	if cp := os.Getenv("CONFIG_PATH"); cp != "" {
+		configFile = cp
+	}
 
-	// Initialize the logger
-	InitLogger("debug")
+	app, cleanup, err := di.InitializeApp(configFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize application: %v\n", err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	logger := app.Logger
+	logger.Info().Msg("Successfully initialized application dependencies")
+
+	// Run database migrations
+	if err := RunMigrations(app.Config, logger); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to run database migrations")
+	}
 
 	logger.Info().Msg("Starting the application...")
 
+	ctx := context.Background()
+
 	exitChannel := make(chan bool, 1)
 
-	go InitMCP(ctx, exitChannel)
+	go InitMCP(ctx, app.Echo, app.MCPServer, app.MCPServerAPI, app.Config, app.Logger, exitChannel)
 
-	// Run until SIGTERM or SIGINTERRUPT is received
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	<-quit
 
 	logger.Info().Msg("Received shutdown signal, shutting down...")
 	exitChannel <- true
+	<-exitChannel
+	logger.Info().Msg("Application shutdown complete.")
 }
 
-func InitMCP(ctx context.Context, exitChan chan bool) {
-	e := echo.New()
-	s := mcpServerSdk.NewMCPServer("billing", "0.0.1")
-
-	err := mcp.Setup(e, s)
+func InitMCP(ctx context.Context, e *echo.Echo, sdkServer *mcpServerSdk.MCPServer, appMCPServer *mcp.MCPServer, cfg *config.Config, logger zerolog.Logger, exitChan chan bool) {
+	err := mcp.Setup(e, sdkServer, appMCPServer)
 	if err != nil {
 		logger.Panic().Err(err).Msg("Failed to setup MCP server")
 	}
 
+	serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+	logger.Info().Str("address", serverAddr).Msg("Starting MCP server...")
+
 	go func() {
-		// TODO: define port in config
-		err := e.Start(":8080")
-		if err != nil {
-			logger.Error().Err(err).Msg("Failed to start MCP server")
+		if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed { // Check for http.ErrServerClosed
+			logger.Error().Err(err).Msg("MCP server failed to start")
+		} else if err == http.ErrServerClosed {
+			logger.Info().Msg("MCP server stopped gracefully.")
+		} else {
+			logger.Info().Msg("MCP server stopped.")
 		}
 	}()
 
-	// Shutdown MCP server gracefully and propagate the exit signal
-	exit := <-exitChan
-	exitChan <- exit
+	<-exitChan
 
 	logger.Warn().Msg("Shutting down MCP server...")
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if err := e.Shutdown(ctx); err != nil {
-		logger.Error().Err(err).Msg("Failed to shutdown MCP server")
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		logger.Error().Err(err).Msg("Failed to shutdown MCP server gracefully")
+	} else {
+		logger.Info().Msg("MCP server shutdown complete")
 	}
-	logger.Info().Msg("MCP server shutdown complete")
+	exitChan <- true
 }
 
-func InitLogger(level string) {
-	// TODO: setup logging level in config
-	logLevel, err := zerolog.ParseLevel(level)
+func RunMigrations(cfg *config.Config, logger zerolog.Logger) error {
+	migrateDBURL := cfg.GetMigrateDSN()
+
+	logger.Info().Str("migrationPath", migrationFilesPath).Str("dbURL", migrateDBURL).Msg("Attempting to run migrations")
+
+	m, err := migrate.New(migrationFilesPath, migrateDBURL)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to parse log level")
+		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
-	zerolog.SetGlobalLevel(logLevel)
+	defer func() {
+		sourceErr, dbErr := m.Close()
+		if sourceErr != nil {
+			logger.Error().Err(sourceErr).Msg("Error closing migration source")
+		}
+		if dbErr != nil {
+			logger.Error().Err(dbErr).Msg("Error closing migration database connection")
+		}
+	}()
+
+	upErr := m.Up()
+
+	if upErr != nil && upErr != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply migrations: %w", upErr)
+	}
+
+	version, dirty, versionErr := m.Version()
+
+	if versionErr != nil {
+		logger.Error().Err(versionErr).Msg("Failed to retrieve migration version status after process.")
+	} else {
+		if upErr == migrate.ErrNoChange {
+			logger.Info().Uint32("version", uint32(version)).Bool("dirty", dirty).Msg("No new migrations to apply. Database is up to date.")
+		} else {
+			logger.Info().Uint32("version", uint32(version)).Bool("dirty", dirty).Msg("Migrations successfully processed. Database is up to date.")
+		}
+	}
+
+	return nil
 }
