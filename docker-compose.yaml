@@ -17,6 +17,29 @@ services:
     networks:
       - billing-network
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./.config.yaml:/app/.config.yaml:ro
+    environment:
+      CONFIG_PATH: /app/.config.yaml # Tells the app where to find the config file
+      # Add any other environment variables your app might need to override config
+      # e.g., for database connection if you prefer env vars over config file for Docker
+      # DB_HOST: db
+      # DB_PORT: 5432
+      # DB_USER: ${DB_USER:-billing}
+      # DB_PASSWORD: ${DB_PASSWORD:-password}
+      # DB_NAME: ${DB_NAME:-billing_db}
+    networks:
+      - billing-network
+
 volumes:
   postgres_data:
 
