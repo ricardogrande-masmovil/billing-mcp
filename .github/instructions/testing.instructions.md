@@ -4,7 +4,7 @@ applyTo: '**/*_test.go'
 
 # Testing Instructions for Billing MCP Server
 
-## 1. General Testing Principles
+## General Testing Principles
 - Write unit tests for new functionality, especially for:
     - Domain logic (`internal/<domain>/domain/`).
     - Critical infrastructure components (e.g., repository methods).
