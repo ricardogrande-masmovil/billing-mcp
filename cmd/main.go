@@ -22,7 +22,8 @@ import (
 
 const (
 	defaultConfigFile  = ".config.yaml"
-	migrationFilesPath = "file://database/migrations"
+	migrationFilesPath = "file://database/migrations/schema"
+	seedFilesPath      = "file://database/migrations/seeds"
 )
 
 var (
@@ -47,6 +48,14 @@ func main() {
 	// Run database migrations
 	if err := RunMigrations(app.Config, logger); err != nil {
 		logger.Fatal().Err(err).Msg("Failed to run database migrations")
+	}
+
+	// Run seed data if enabled
+	if os.Getenv("RUN_SEEDS") == "true" {
+		if err := RunSeeds(app.Config, logger); err != nil {
+			logger.Error().Err(err).Msg("Failed to run seed data")
+			// Decide if you want to exit on seed failure or just log an error
+		}
 	}
 
 	logger.Info().Msg("Starting the application...")
@@ -135,6 +144,47 @@ func RunMigrations(cfg *config.Config, logger zerolog.Logger) error {
 		} else {
 			logger.Info().Uint32("version", uint32(version)).Bool("dirty", dirty).Msg("Migrations successfully processed. Database is up to date.")
 		}
+	}
+
+	return nil
+}
+
+func RunSeeds(cfg *config.Config, logger zerolog.Logger) error {
+	seedDBURL := cfg.GetMigrateDSN("x-migrations-table=seed_migrations")
+
+	logger.Info().Str("seedPath", seedFilesPath).Str("dbURL", seedDBURL).Msg("Attempting to run seed data with custom table 'seed_migrations'")
+
+	m, err := migrate.New(seedFilesPath, seedDBURL)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance for seeds: %w", err)
+	}
+	defer func() {
+		sourceErr, dbErr := m.Close()
+		if sourceErr != nil {
+			logger.Error().Err(sourceErr).Msg("Error closing seed source")
+		}
+		if dbErr != nil {
+			logger.Error().Err(dbErr).Msg("Error closing seed database connection")
+		}
+	}()
+
+	upErr := m.Up()
+
+	if upErr != nil && upErr != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply seeds: %w", upErr)
+	}
+
+	if upErr == migrate.ErrNoChange {
+		logger.Info().Msg("No new seeds to apply.")
+	} else {
+		logger.Info().Msg("Seed data successfully applied.")
+	}
+
+	version, dirty, versionErr := m.Version()
+	if versionErr != nil {
+		logger.Error().Err(versionErr).Msg("Failed to retrieve seed version status after process.")
+	} else {
+		logger.Info().Uint32("version", uint32(version)).Bool("dirty", dirty).Msg("Seed data successfully processed.")
 	}
 
 	return nil
