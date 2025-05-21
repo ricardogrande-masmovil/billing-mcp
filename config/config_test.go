@@ -28,6 +28,7 @@ func TestLoadConfig_Success(t *testing.T) {
 		},
 		LogLevel: "info",
 		Version:  "0.0.1",
+		RunSeeds: false, // Assuming default is false and not set in .config.example.yaml
 	}
 
 	cfg, err := LoadConfig(configPath)
@@ -66,9 +67,38 @@ version: "0.0.1"
 	assert.Equal(t, "8080", cfg.Server.Port, "Default server port should be applied")
 	assert.Equal(t, "disable", cfg.Database.SSLMode, "Default SSL mode should be applied")
 	assert.Equal(t, 3, cfg.Database.MaxRetries, "Default MaxRetries should be applied")
+	assert.False(t, cfg.RunSeeds, "Default RunSeeds should be false")
 
 	// Check other values are loaded correctly
 	assert.Equal(t, "testhost", cfg.Server.Host)
 	assert.Equal(t, "debug", cfg.LogLevel)
 	assert.Equal(t, 1234, cfg.Database.Port)
+}
+
+func TestLoadConfig_RunSeedsTrue(t *testing.T) {
+	tempDir := t.TempDir()
+	tempFile := filepath.Join(tempDir, "temp_config_runseeds.yaml")
+
+	content := []byte(`
+server:
+  host: "testhost"
+database:
+  host: "dbhost"
+  port: 1234
+  user: "testuser"
+  password: "testpass"
+  dbname: "testdb"
+logLevel: "debug"
+version: "0.0.1"
+runSeeds: true
+`)
+	require.NoError(t, os.WriteFile(tempFile, content, 0600), "Failed to write temp config file")
+
+	cfg, err := LoadConfig(tempFile)
+	require.NoError(t, err, "LoadConfig() should not return an error for valid temp file")
+
+	assert.True(t, cfg.RunSeeds, "RunSeeds should be true when set in config")
+	assert.Equal(t, "8080", cfg.Server.Port, "Default server port should be applied")
+	assert.Equal(t, "disable", cfg.Database.SSLMode, "Default SSL mode should be applied")
+	assert.Equal(t, 3, cfg.Database.MaxRetries, "Default MaxRetries should be applied")
 }

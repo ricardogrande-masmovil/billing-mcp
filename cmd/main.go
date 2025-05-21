@@ -50,11 +50,10 @@ func main() {
 		logger.Fatal().Err(err).Msg("Failed to run database migrations")
 	}
 
-	// Run seed data if enabled
-	if os.Getenv("RUN_SEEDS") == "true" {
+	// Run seed data if enabled in config
+	if app.Config.RunSeeds {
 		if err := RunSeeds(app.Config, logger); err != nil {
 			logger.Error().Err(err).Msg("Failed to run seed data")
-			// Decide if you want to exit on seed failure or just log an error
 		}
 	}
 
