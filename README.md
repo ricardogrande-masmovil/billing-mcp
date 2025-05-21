@@ -33,7 +33,7 @@ To get started with the Billing MCP Server, follow these steps:
 
 4. Run the server:
    ```bash
-   go run main.go
+   go run cmd/main.go
    ```
 
 ## Configuration
