@@ -1,0 +1,6 @@
+INSERT INTO invoices (id, account_id, issue_date, due_date, tax_amount, total_amount_without_tax, total_amount_with_tax, status, invoice_number, created_at, updated_at) VALUES
+('123e4567-e89b-12d3-a456-426614174001', 'account_mock_A', '2025-01-15T10:00:00Z', '2025-02-15T10:00:00Z', 0.0, 100.50, 100.50, 'SENT', 'INV-MOCK-001', NOW(), NOW()),
+('123e4567-e89b-12d3-a456-426614174002', 'account_mock_B', '2025-01-20T11:00:00Z', '2025-02-20T11:00:00Z', 0.0, 250.75, 250.75, 'PAID', 'INV-MOCK-002', NOW(), NOW()),
+('123e4567-e89b-12d3-a456-426614174003', 'account_mock_A', '2025-02-01T09:30:00Z', '2025-03-01T09:30:00Z', 0.0, 75.00, 75.00, 'OVERDUE', 'INV-MOCK-003', NOW(), NOW()),
+('123e4567-e89b-12d3-a456-426614174004', 'account_mock_C', '2025-03-10T14:00:00Z', '2025-04-10T14:00:00Z', 0.0, 500.00, 500.00, 'DRAFT', 'INV-MOCK-004', NOW(), NOW()),
+('123e4567-e89b-12d3-a456-426614174005', 'account_mock_B', '2025-03-15T16:30:00Z', '2025-04-15T16:30:00Z', 0.0, 120.25, 120.25, 'SENT', 'INV-MOCK-005', NOW(), NOW());

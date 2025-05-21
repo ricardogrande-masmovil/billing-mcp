@@ -28,6 +28,7 @@ type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	LogLevel string         `yaml:"logLevel"`
 	Version  string         `yaml:"version"`
+	RunSeeds bool           `yaml:"runSeeds"` // Added RunSeeds flag
 }
 
 // LoadConfig loads configuration from the given YAML file path.
@@ -54,7 +55,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	if cfg.Database.MaxRetries == 0 {
 		cfg.Database.MaxRetries = 3 // Default MaxRetries
 	}
-
+	
 	return &cfg, nil
 }
 
@@ -71,9 +72,10 @@ func (c *Config) GetDSN() string {
 }
 
 // GetMigrateDSN constructs the Data Source Name (DSN) for golang-migrate, which needs to be in a URL format.
-//   This is different from the DSN used by gorm. Example: postgresql://user:password@host:port/dbname?sslmode=disable
-func (c *Config) GetMigrateDSN() string {
-	return fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=%s",
+//
+//	This is different from the DSN used by gorm. Example: postgresql://user:password@host:port/dbname?sslmode=disable
+func (c *Config) GetMigrateDSN(params ...string) string {
+	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=%s",
 		c.Database.User,
 		c.Database.Password,
 		c.Database.Host,
@@ -81,4 +83,8 @@ func (c *Config) GetMigrateDSN() string {
 		c.Database.DBName,
 		c.Database.SSLMode,
 	)
+	if len(params) > 0 {
+		dsn += "&" + params[0]
+	}
+	return dsn
 }
