@@ -1,0 +1,26 @@
+{
+    "github.copilot.nextEditSuggestions.enabled": false,
+    "github.copilot.chat.codesearch.enabled": true,
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "github.copilot.chat.codeGeneration.instructions": [
+        {
+            "file": ".github/instructions/code.instructions.md"
+        },
+        {
+            "file": ".github/instructions/testing.instructions.md"
+        },
+        {
+            "file": ".github/instructions/documentation.instructions.md"
+        }
+    ],
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "file": ".github/instructions/commit-message.instructions.md"
+        }
+    ],
+    "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+        {
+            "file": ".github/instructions/pull-request-description.instructions.md"
+        }
+    ]
+}
