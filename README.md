@@ -36,6 +36,34 @@ To get started with the Billing MCP Server, follow these steps:
    go run main.go
    ```
 
+## Configuration
+
+The server is configured via a `.config.yaml` file in the root of the project. A sample configuration file named `.config.example.yaml` is provided. You can copy this file to `.config.yaml` and modify it to suit your environment.
+
+### Running Seed Data
+
+To populate the database with initial seed data for development or testing, you can enable the `runSeeds` option in your `.config.yaml` file:
+
+```yaml
+# .config.yaml
+server:
+  host: "localhost"
+  port: "8080"
+database:
+  host: "localhost"
+  port: 5432
+  user: "billing_user"
+  password: "yoursecurepassword"
+  dbname: "billing_db"
+  sslmode: "disable"
+  maxRetries: 3
+logLevel: "info"
+version: "0.0.1"
+runSeeds: true # Set to true to run seed data on startup
+```
+
+By default, `runSeeds` is `false`.
+
 ## Setup an MCP client
 
 To set up an MCP client, you will need the following config:
