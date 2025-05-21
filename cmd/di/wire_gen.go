@@ -13,10 +13,12 @@ import (
 	"github.com/ricardogrande-masmovil/billing-mcp/api"
 	"github.com/ricardogrande-masmovil/billing-mcp/api/mcp"
 	"github.com/ricardogrande-masmovil/billing-mcp/config"
-	"github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/domain"
+	domain2 "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/domain"
 	persistence2 "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/infrastructure/persistence"
 	"github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/infrastructure/persistence/sql"
 	"github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/ports"
+	"github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain"
+	persistence3 "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence"
 	"github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -44,6 +46,8 @@ func InitializeApp(configFile string) (*App, func(), error) {
 	service := ProvideInvoiceDomainService(repository)
 	invoicesController := ProvideInvoicesController(service)
 	mcpMCPServer := ProvideMCPServerAPI(healthController, invoicesController)
+	movementRepository := ProvideMovementRepository(db, logger)
+	movementService := ProvideMovementService(logger, movementRepository)
 	app := &App{
 		Config:             config,
 		Logger:             logger,
@@ -53,6 +57,7 @@ func InitializeApp(configFile string) (*App, func(), error) {
 		MCPServerAPI:       mcpMCPServer,
 		HealthController:   healthController,
 		InvoicesController: invoicesController,
+		MovementsService:   movementService,
 	}
 	return app, func() {
 		cleanup()
@@ -71,6 +76,7 @@ type App struct {
 	MCPServerAPI       *mcp.MCPServer // Added field for the API specific MCP server
 	HealthController   mcp.HealthController
 	InvoicesController mcp.InvoicesController
+	MovementsService   domain.MovementService
 }
 
 // --- Core Providers ---
@@ -137,16 +143,25 @@ func ProvideInvoicePersistenceRepository(client sql.InvoiceSqlClient, converter 
 	return persistence2.NewRepository(client, converter)
 }
 
-func ProvideInvoiceDomainService(repo domain.Repository) domain.Service {
-	return domain.NewService(repo)
+func ProvideInvoiceDomainService(repo domain2.Repository) domain2.Service {
+	return domain2.NewService(repo)
 }
 
-func ProvideInvoicePortsService(domainService domain.Service) ports.InvoiceService {
+func ProvideInvoicePortsService(domainService domain2.Service) ports.InvoiceService {
 	return domainService
 }
 
 func ProvideInvoicesController(service ports.InvoiceService) mcp.InvoicesController {
 	return ports.NewController(service)
+}
+
+// --- Movement Feature Providers ---
+func ProvideMovementRepository(db *gorm.DB, logger zerolog.Logger) domain.MovementRepository {
+	return persistence3.NewMovementSQLRepository(db, logger)
+}
+
+func ProvideMovementService(logger zerolog.Logger, repo domain.MovementRepository) domain.MovementService {
+	return *domain.NewMovementService(logger, repo)
 }
 
 // --- Provider Sets ---
@@ -163,10 +178,16 @@ var CoreSet = wire.NewSet(
 var InvoiceFeatureSet = wire.NewSet(
 	ProvideInvoiceSqlClient,
 	ProvideInvoiceSqlConverter,
-	ProvideInvoicePersistenceRepository, wire.Bind(new(domain.Repository), new(persistence2.Repository)), ProvideInvoiceDomainService, wire.Bind(new(ports.InvoiceService), new(domain.Service)), ProvideInvoicesController,
+	ProvideInvoicePersistenceRepository, wire.Bind(new(domain2.Repository), new(persistence2.Repository)), ProvideInvoiceDomainService, wire.Bind(new(ports.InvoiceService), new(domain2.Service)), ProvideInvoicesController,
+)
+
+var MovementFeatureSet = wire.NewSet(
+	ProvideMovementRepository,
+	ProvideMovementService,
 )
 
 var AppSet = wire.NewSet(
 	CoreSet,
-	InvoiceFeatureSet, wire.Struct(new(App), "*"),
+	InvoiceFeatureSet,
+	MovementFeatureSet, wire.Struct(new(App), "*"),
 )
