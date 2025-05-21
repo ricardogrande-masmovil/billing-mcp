@@ -1,54 +1,55 @@
 package sql
 
 import (
-	"github.com/google/uuid"
-	"github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain/model"
+	domainmodel "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain/model"
+	"github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 )
 
-// ToDomainMovement converts a GORM Movement model to a domain Movement model.
-func ToDomainMovement(sqlMovement *Movement) *model.Movement {
+// MovementConverter handles mapping between domain and SQL movement models.
+type MovementConverter struct{}
+
+// NewMovementConverter creates a new MovementConverter.
+func NewMovementConverter() *MovementConverter {
+	return &MovementConverter{}
+}
+
+// ToDomainMovement converts an SQL movement model to a domain movement model.
+func (c *MovementConverter) ToDomainMovement(sqlMovement *Movement) *domainmodel.Movement {
 	if sqlMovement == nil {
 		return nil
 	}
-	return &model.Movement{
-		MovementID:      sqlMovement.ID, // Assuming BaseModel's ID is the MovementID
+	status, _ := domainmodel.StatusFromString(sqlMovement.Status)                   // Handle error appropriately
+	movementType, _ := domainmodel.MovementTypeFromString(sqlMovement.MovementType) // Handle error appropriately
+
+	return &domainmodel.Movement{
+		MovementID:      sqlMovement.ID,
 		InvoiceID:       sqlMovement.InvoiceID,
 		Amount:          sqlMovement.Amount,
-		MovementType:    sqlMovement.MovementType,
+		MovementType:    movementType,
 		Description:     sqlMovement.Description,
 		TransactionDate: sqlMovement.TransactionDate,
-		Status:          sqlMovement.Status,
+		Status:          status,
+		CreatedAt:       sqlMovement.CreatedAt,
+		UpdatedAt:       sqlMovement.UpdatedAt,
 	}
 }
 
-// ToSQLMovement converts a domain Movement model to a GORM Movement model.
-func ToSQLMovement(domainMovement *model.Movement) *Movement {
+// ToSQLMovement converts a domain movement model to an SQL movement model.
+func (c *MovementConverter) ToSQLMovement(domainMovement *domainmodel.Movement) *Movement {
 	if domainMovement == nil {
 		return nil
 	}
-	sqlMovement := &Movement{
+	return &Movement{
+		BaseModel: persistence.BaseModel{
+			ID:        domainMovement.MovementID,
+			CreatedAt: domainMovement.CreatedAt,
+			UpdatedAt: domainMovement.UpdatedAt,
+		},
 		InvoiceID:       domainMovement.InvoiceID,
 		Amount:          domainMovement.Amount,
-		MovementType:    domainMovement.MovementType,
+		MovementType:    domainMovement.MovementType.String(),
 		Description:     domainMovement.Description,
 		TransactionDate: domainMovement.TransactionDate,
-		Status:          domainMovement.Status,
+		Status:          domainMovement.Status.String(),
 	}
-	// If the domain model has an ID, set it in the SQL model's BaseModel
-	if domainMovement.MovementID != uuid.Nil {
-		sqlMovement.ID = domainMovement.MovementID
-	}
-	return sqlMovement
-}
-
-// ToDomainMovements converts a slice of GORM Movement models to a slice of domain Movement models.
-func ToDomainMovements(sqlMovements []*Movement) []*model.Movement {
-	if sqlMovements == nil {
-		return nil
-	}
-	domainMovements := make([]*model.Movement, len(sqlMovements))
-	for i, m := range sqlMovements {
-		domainMovements[i] = ToDomainMovement(m)
-	}
-	return domainMovements
 }

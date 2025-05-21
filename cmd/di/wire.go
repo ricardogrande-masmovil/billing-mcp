@@ -17,6 +17,7 @@ import (
 	invoicePorts "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/ports"
 	movementsDomain "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain"
 	movementsPersistence "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence"
+	movementsSQL "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence/sql"
 	pkgPersistence "github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -113,8 +114,16 @@ func ProvideInvoicesController(service invoicePorts.InvoiceService) mcpAPI.Invoi
 }
 
 // --- Movement Feature Providers ---
-func ProvideMovementRepository(db *gorm.DB, logger zerolog.Logger) movementsDomain.MovementRepository {
-	return movementsPersistence.NewMovementSQLRepository(db, logger)
+func ProvideMovementSqlClient(db *gorm.DB, logger zerolog.Logger) *movementsSQL.MovementSqlClient {
+	return movementsSQL.NewMovementSqlClient(db, logger)
+}
+
+func ProvideMovementConverter() *movementsSQL.MovementConverter {
+	return movementsSQL.NewMovementConverter()
+}
+
+func ProvideMovementRepository(client *movementsSQL.MovementSqlClient, converter *movementsSQL.MovementConverter, logger zerolog.Logger) movementsDomain.MovementRepository {
+	return movementsPersistence.NewMovementSQLRepository(client, converter, logger)
 }
 
 func ProvideMovementService(logger zerolog.Logger, repo movementsDomain.MovementRepository) movementsDomain.MovementService {
@@ -143,6 +152,8 @@ var InvoiceFeatureSet = wire.NewSet(
 )
 
 var MovementFeatureSet = wire.NewSet(
+	ProvideMovementSqlClient,
+	ProvideMovementConverter,
 	ProvideMovementRepository,
 	ProvideMovementService,
 )

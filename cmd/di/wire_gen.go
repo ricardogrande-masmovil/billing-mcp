@@ -19,6 +19,7 @@ import (
 	"github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/ports"
 	"github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain"
 	persistence3 "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence"
+	sql2 "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence/sql"
 	"github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -46,7 +47,9 @@ func InitializeApp(configFile string) (*App, func(), error) {
 	service := ProvideInvoiceDomainService(repository)
 	invoicesController := ProvideInvoicesController(service)
 	mcpMCPServer := ProvideMCPServerAPI(healthController, invoicesController)
-	movementRepository := ProvideMovementRepository(db, logger)
+	movementSqlClient := ProvideMovementSqlClient(db, logger)
+	movementConverter := ProvideMovementConverter()
+	movementRepository := ProvideMovementRepository(movementSqlClient, movementConverter, logger)
 	movementService := ProvideMovementService(logger, movementRepository)
 	app := &App{
 		Config:             config,
@@ -156,8 +159,16 @@ func ProvideInvoicesController(service ports.InvoiceService) mcp.InvoicesControl
 }
 
 // --- Movement Feature Providers ---
-func ProvideMovementRepository(db *gorm.DB, logger zerolog.Logger) domain.MovementRepository {
-	return persistence3.NewMovementSQLRepository(db, logger)
+func ProvideMovementSqlClient(db *gorm.DB, logger zerolog.Logger) *sql2.MovementSqlClient {
+	return sql2.NewMovementSqlClient(db, logger)
+}
+
+func ProvideMovementConverter() *sql2.MovementConverter {
+	return sql2.NewMovementConverter()
+}
+
+func ProvideMovementRepository(client *sql2.MovementSqlClient, converter *sql2.MovementConverter, logger zerolog.Logger) domain.MovementRepository {
+	return persistence3.NewMovementSQLRepository(client, converter, logger)
 }
 
 func ProvideMovementService(logger zerolog.Logger, repo domain.MovementRepository) domain.MovementService {
@@ -182,6 +193,8 @@ var InvoiceFeatureSet = wire.NewSet(
 )
 
 var MovementFeatureSet = wire.NewSet(
+	ProvideMovementSqlClient,
+	ProvideMovementConverter,
 	ProvideMovementRepository,
 	ProvideMovementService,
 )
