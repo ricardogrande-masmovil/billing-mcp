@@ -61,9 +61,6 @@ func (c *MovementSqlClient) UpdateMovement(ctx context.Context, m *Movement) err
 	log := c.logger.With().Str("method", "UpdateMovement").Stringer("movementID", m.ID).Logger()
 	log.Debug().Interface("movement", m).Msg("Updating movement")
 
-	// Pass the movement struct directly to Updates.
-	// GORM will automatically update the UpdatedAt field.
-	// Ensure 'm' has its ID set and other fields to be updated.
 	result := c.db.WithContext(ctx).Model(&Movement{}).Where("id = ?", m.ID).Updates(m)
 
 	if result.Error != nil {

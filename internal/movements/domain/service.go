@@ -14,7 +14,7 @@ import (
 type MovementRepository interface {
 	Create(ctx context.Context, movement *model.Movement) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Movement, error)
-	Update(ctx context.Context, movement *model.Movement) error
+	UpdateStatus(ctx context.Context, movement *model.Movement) error // Renamed from Update
 	Delete(ctx context.Context, id uuid.UUID) error
 	Search(ctx context.Context, criteria *model.SearchCriteria) ([]*model.Movement, error)
 }
@@ -80,7 +80,7 @@ func (s *MovementService) UpdateMovementStatus(ctx context.Context, id uuid.UUID
 	// TODO: Add business logic for status transitions if needed
 	movement.Status = status
 
-	if err := s.repository.Update(ctx, movement); err != nil {
+	if err := s.repository.UpdateStatus(ctx, movement); err != nil { // Renamed from Update
 		log.Error().Err(err).Msg("Failed to update movement status in repository")
 		return nil, fmt.Errorf("failed to update movement status: %w", err)
 	}
