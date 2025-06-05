@@ -29,8 +29,6 @@ func (c *MovementConverter) ToDomainMovement(sqlMovement *Movement) *domainmodel
 		Description:     sqlMovement.Description,
 		TransactionDate: sqlMovement.TransactionDate,
 		Status:          status,
-		CreatedAt:       sqlMovement.CreatedAt,
-		UpdatedAt:       sqlMovement.UpdatedAt,
 	}
 }
 
@@ -42,8 +40,6 @@ func (c *MovementConverter) ToSQLMovement(domainMovement *domainmodel.Movement) 
 	return &Movement{
 		BaseModel: persistence.BaseModel{
 			ID:        domainMovement.MovementID,
-			CreatedAt: domainMovement.CreatedAt,
-			UpdatedAt: domainMovement.UpdatedAt,
 		},
 		InvoiceID:       domainMovement.InvoiceID,
 		Amount:          domainMovement.Amount,

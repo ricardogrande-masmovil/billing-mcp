@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"context"
+
 	"github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/domain/model"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -9,6 +11,7 @@ import (
 type Repository interface {
 	GetInvoiceByID(id model.InvoiceID) (model.Invoice, error)
 	GetInvoicesByAccountId(accountId string, criteria model.Criteria) (model.Invoices, error)
+	GetInvoiceLines(ctx context.Context, id model.InvoiceID) ([]model.InvoiceLine, error)
 }
 
 type Service struct {
@@ -43,4 +46,15 @@ func (s Service) GetInvoicesByCriteria(accountId string, criteria model.Criteria
 		return nil, err
 	}
 	return invoices, nil
+}
+
+func (s Service) GetInvoiceLines(ctx context.Context, id model.InvoiceID) ([]model.InvoiceLine, error) {
+	s.logger.Info().Str("id", id.String()).Msg("Fetching invoice lines by invoice ID")
+
+	lines, err := s.repo.GetInvoiceLines(ctx, id)
+	if err != nil {
+		s.logger.Error().Err(err).Str("invoice_id", id.String()).Msg("Failed to fetch invoice lines")
+		return nil, err
+	}
+	return lines, nil
 }

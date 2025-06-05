@@ -1,15 +1,18 @@
 package ports
 
-type Invoices = []Invoice
-
-type Invoice struct {
-	ID               string `json:"id"`
-	AmountWithoutTax int    `json:"amount_without_tax"`
-	AmountWithTax    int    `json:"amount_with_tax"`
-	Status           string `json:"status"`
-	IssueDate        string `json:"issue_date"`
-	DueDate          string `json:"due_date"`
+// MovementDTO represents a movement as returned by the MCP API
+type MovementDTO struct {
+	ID              string  `json:"id"`
+	InvoiceID       string  `json:"invoice_id"`
+	Amount          float64 `json:"amount"`
+	MovementType    string  `json:"movement_type"`
+	Description     string  `json:"description"`
+	TransactionDate string  `json:"transaction_date"`
+	Status          string  `json:"status"`
 }
+
+// MovementsDTO is a slice of MovementDTO
+type MovementsDTO = []MovementDTO
 
 // InvoiceMovementDTO represents a simplified view of a movement in the context of an invoice
 type InvoiceMovementDTO struct {

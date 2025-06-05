@@ -102,7 +102,7 @@ func TestMovementService_UpdateMovementStatus(t *testing.T) {
 	}
 
 	mockRepo.EXPECT().GetByID(ctx, movementID).Return(originalMovement, nil).Times(1)
-	mockRepo.EXPECT().Update(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, m *model.Movement) error {
+	mockRepo.EXPECT().UpdateStatus(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, m *model.Movement) error {
 		assert.Equal(t, movementID, m.MovementID)
 		assert.Equal(t, newStatus, m.Status) // Check that status is updated
 		return nil

@@ -100,16 +100,16 @@ func (mr *MockMovementRepositoryMockRecorder) Search(ctx, criteria any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockMovementRepository)(nil).Search), ctx, criteria)
 }
 
-// Update mocks base method.
-func (m *MockMovementRepository) Update(ctx context.Context, movement *model.Movement) error {
+// UpdateStatus mocks base method.
+func (m *MockMovementRepository) UpdateStatus(ctx context.Context, movement *model.Movement) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, movement)
+	ret := m.ctrl.Call(m, "UpdateStatus", ctx, movement)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Update indicates an expected call of Update.
-func (mr *MockMovementRepositoryMockRecorder) Update(ctx, movement any) *gomock.Call {
+// UpdateStatus indicates an expected call of UpdateStatus.
+func (mr *MockMovementRepositoryMockRecorder) UpdateStatus(ctx, movement any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMovementRepository)(nil).Update), ctx, movement)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatus", reflect.TypeOf((*MockMovementRepository)(nil).UpdateStatus), ctx, movement)
 }

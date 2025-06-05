@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	domain "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/domain/model"
 	"github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/infrastructure/persistence/sql"
 	"github.com/rs/zerolog"
@@ -61,4 +63,25 @@ func (r Repository) GetInvoicesByAccountId(accountId string, criteria domain.Cri
 
 	r.logger.Info().Int("count", len(invoices)).Msg("Fetched invoices by criteria")
 	return
+}
+
+// GetInvoiceLines retrieves all invoice lines (movements) for a specific invoice
+func (r Repository) GetInvoiceLines(ctx context.Context, id domain.InvoiceID) ([]domain.InvoiceLine, error) {
+	r.logger.Info().Str("invoice_id", id.String()).Msg("Fetching invoice lines")
+
+	// Fetch invoice lines from SQL client
+	sqlLines, err := r.invoiceSqlClient.GetInvoiceLinesByInvoiceID(ctx, id.String())
+	if err != nil {
+		r.logger.Error().Err(err).Str("invoice_id", id.String()).Msg("Failed to fetch invoice lines")
+		return nil, err
+	}
+
+	// Convert SQL models to domain models
+	lines := make([]domain.InvoiceLine, len(sqlLines))
+	for i, sqlLine := range sqlLines {
+		lines[i] = r.converter.SQLLineToInvoiceLine(sqlLine)
+	}
+
+	r.logger.Info().Str("invoice_id", id.String()).Int("count", len(lines)).Msg("Successfully fetched invoice lines")
+	return lines, nil
 }

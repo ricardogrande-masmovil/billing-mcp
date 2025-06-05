@@ -18,6 +18,7 @@ var (
 type InvoiceService interface {
 	GetInvoiceByID(id domain.InvoiceID) (domain.Invoice, error)
 	GetInvoicesByCriteria(accountId string, criteria domain.Criteria) (domain.Invoices, error)
+	GetInvoiceMovements(id domain.InvoiceID) ([]InvoiceMovementDTO, error)
 }
 
 type controller struct {
@@ -88,6 +89,49 @@ func (c controller) GetInvoices(ctx context.Context, request mcp.CallToolRequest
 		return nil, err
 	}
 
+	response := mcp.NewToolResultText(string(jsonData))
+	return response, nil
+}
+
+func (c controller) GetInvoiceMovements(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	c.logger.Info().Msg("Processing request in GetInvoiceMovements tool")
+
+	// Extract invoiceId from request
+	requestedInvoiceId, ok := request.Params.Arguments["invoiceId"].(string)
+	if !ok || requestedInvoiceId == "" {
+		c.logger.Error().Msg("Invoice ID is required")
+		return mcp.NewToolResultErrorFromErr("Missing request parameter", ErrMissingInvoiceId), nil
+	}
+
+	// Extract accountId from request (not used in this implementation but required by API contract)
+	_, ok = request.Params.Arguments["accountId"].(string)
+	if !ok {
+		c.logger.Error().Msg("Account ID is required")
+		return mcp.NewToolResultErrorFromErr("Missing request parameter", ErrMissingAccountId), nil
+	}
+
+	// Parse the invoice ID
+	invoiceId, err := domain.ParseInvoiceID(requestedInvoiceId)
+	if err != nil {
+		c.logger.Error().Err(err).Msg("Failed to parse invoice ID")
+		return mcp.NewToolResultErrorFromErr("Invalid invoice ID format", err), nil
+	}
+
+	// Fetch invoice movements from service
+	movements, err := c.service.GetInvoiceMovements(invoiceId)
+	if err != nil {
+		c.logger.Error().Err(err).Str("invoiceId", requestedInvoiceId).Msg("Failed to get invoice movements")
+		return mcp.NewToolResultErrorFromErr("Failed to retrieve invoice movements", err), nil
+	}
+
+	// Convert movements to JSON
+	jsonData, err := c.converter.ConvertInvoiceMovementsToJson(movements)
+	if err != nil {
+		c.logger.Error().Err(err).Msg("Failed to convert invoice movements to JSON")
+		return nil, err
+	}
+
+	c.logger.Info().Str("invoiceId", requestedInvoiceId).Int("movementsCount", len(movements)).Msg("Successfully retrieved invoice movements")
 	response := mcp.NewToolResultText(string(jsonData))
 	return response, nil
 }

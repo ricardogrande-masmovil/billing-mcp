@@ -16,8 +16,6 @@ type Movement struct {
 	Description     string
 	TransactionDate time.Time
 	Status          Status
-	CreatedAt       time.Time // Added CreatedAt
-	UpdatedAt       time.Time // Added UpdatedAt
 }
 
 // MovementType defines the type of movement (credit or debit).
@@ -57,7 +55,5 @@ func NewMovement(invoiceID uuid.UUID, amount float64, movementType MovementType,
 		Description:     description,
 		TransactionDate: time.Now(),
 		Status:          StatusPending, // Default status
-		CreatedAt:       time.Now(),    // Initialize CreatedAt
-		UpdatedAt:       time.Now(),    // Initialize UpdatedAt
 	}, nil
 }

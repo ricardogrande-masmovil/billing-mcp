@@ -48,12 +48,14 @@ func ParseInvoiceID(s string) (InvoiceID, error) {
 }
 
 // InvoiceLine represents a single line item on an invoice.
+// It provides a simplified view of a Movement that's included in an invoice.
 type InvoiceLine struct {
+	MovementID       uuid.UUID // Reference to the corresponding movement
 	Description      string
 	AmountWithoutTax float64
 	AmountWithTax    float64
 	TaxPercentage    float64
-	OperationType    string // Assuming this is a string for simplicity ("credit" or "debit")
+	OperationType    string // Corresponds to MovementType ("CREDIT" or "DEBIT")
 }
 
 type Invoices = []Invoice
@@ -80,25 +82,6 @@ func (inv *Invoice) AddLine(invoiceLine InvoiceLine) error {
 
 	inv.Lines = append(inv.Lines, invoiceLine)
 	return nil
-}
-
-// recalculateTotals updates the subtotal, tax, and total amounts.
-func (inv *Invoice) recalculateTotals() {
-	inv.TaxAmount = 0
-	inv.TotalAmountWithoutTax = 0
-	inv.TotalAmountWithTax = 0
-
-	for _, line := range inv.Lines {
-		if line.OperationType == "credit" {
-			inv.TotalAmountWithoutTax -= line.AmountWithoutTax
-			inv.TotalAmountWithTax -= line.AmountWithTax
-			inv.TaxAmount -= (line.AmountWithTax - line.AmountWithoutTax)
-		} else if line.OperationType == "debit" {
-			inv.TotalAmountWithoutTax += line.AmountWithoutTax
-			inv.TotalAmountWithTax += line.AmountWithTax
-			inv.TaxAmount += (line.AmountWithTax - line.AmountWithoutTax)
-		}
-	}
 }
 
 func (inv *Invoice) MarkAsSent() error {

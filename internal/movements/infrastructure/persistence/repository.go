@@ -21,7 +21,7 @@ type MovementSQLRepository struct {
 
 // NewMovementSQLRepository creates a new MovementSQLRepository.
 func NewMovementSQLRepository(client *sql.MovementSqlClient, converter *sql.MovementConverter, logger zerolog.Logger) domain.MovementRepository {
-	return &MovementSQLRepository{
+	return &MovementSQLRepository{ // Return a pointer
 		client:    client,
 		converter: converter,
 		logger:    logger.With().Str("component", "MovementSQLRepository").Logger(),
@@ -63,6 +63,8 @@ func (r *MovementSQLRepository) GetByID(ctx context.Context, id uuid.UUID) (*dom
 }
 
 // Update updates an existing movement (specifically its status).
+// This method might be deprecated or changed if UpdateStatus is the preferred way.
+// For now, it aligns with the original structure but might need review based on domain requirements.
 func (r *MovementSQLRepository) Update(ctx context.Context, movement *domainmodel.Movement) error {
 	r.logger.Debug().Interface("domainMovement", movement).Msg("Updating movement")
 	sqlMovement := r.converter.ToSQLMovement(movement)
@@ -72,6 +74,22 @@ func (r *MovementSQLRepository) Update(ctx context.Context, movement *domainmode
 		return fmt.Errorf("repository: failed to update movement with ID %s: %w", movement.MovementID, err)
 	}
 	r.logger.Info().Stringer("movementID", movement.MovementID).Msg("Movement updated successfully in repository")
+	return nil
+}
+
+// UpdateStatus updates the status of an existing movement.
+func (r *MovementSQLRepository) UpdateStatus(ctx context.Context, movement *domainmodel.Movement) error {
+	r.logger.Debug().Stringer("movementID", movement.MovementID).Str("status", string(movement.Status)).Msg("Updating movement status")
+
+	// The domain service should fetch the movement, update its status and UpdatedAt, then pass it here.
+	// This repository method is responsible for persisting that change.
+	sqlMovement := r.converter.ToSQLMovement(movement)
+	err := r.client.UpdateMovement(ctx, sqlMovement) // Assumes UpdateMovement can handle status and UpdatedAt changes
+	if err != nil {
+		r.logger.Error().Err(err).Stringer("movementID", movement.MovementID).Msg("Failed to update movement status in repository")
+		return fmt.Errorf("repository: failed to update movement status for ID %s: %w", movement.MovementID, err)
+	}
+	r.logger.Info().Stringer("movementID", movement.MovementID).Msg("Movement status updated successfully in repository")
 	return nil
 }
 
