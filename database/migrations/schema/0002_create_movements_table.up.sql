@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS movements (
     description TEXT,
     transaction_date TIMESTAMPTZ NOT NULL,
     status VARCHAR(50) NOT NULL,
+    -- Fields for invoice line representation
+    amount_without_tax DECIMAL(10, 2),
+    amount_with_tax DECIMAL(10, 2),
+    tax_percentage DECIMAL(5, 2),
+    operation_type VARCHAR(50),
 
     CONSTRAINT fk_movements_invoice_id FOREIGN KEY (invoice_id)
         REFERENCES invoices (id)

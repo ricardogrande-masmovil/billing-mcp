@@ -20,6 +20,7 @@ import (
 	"github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain"
 	persistence3 "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence"
 	sql2 "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence/sql"
+	ports2 "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/ports"
 	"github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -46,21 +47,23 @@ func InitializeApp(configFile string) (*App, func(), error) {
 	repository := ProvideInvoicePersistenceRepository(invoiceSqlClient, invoiceSqlConverter)
 	service := ProvideInvoiceDomainService(repository)
 	invoicesController := ProvideInvoicesController(service)
-	mcpMCPServer := ProvideMCPServerAPI(healthController, invoicesController)
 	movementSqlClient := ProvideMovementSqlClient(db, logger)
 	movementConverter := ProvideMovementConverter()
 	movementRepository := ProvideMovementRepository(movementSqlClient, movementConverter, logger)
 	movementService := ProvideMovementService(logger, movementRepository)
+	movementsController := ProvideMovementsController(movementService, logger)
+	mcpMCPServer := ProvideMCPServerAPI(healthController, invoicesController, movementsController)
 	app := &App{
-		Config:             config,
-		Logger:             logger,
-		DB:                 db,
-		Echo:               echo,
-		MCPServer:          mcpServer,
-		MCPServerAPI:       mcpMCPServer,
-		HealthController:   healthController,
-		InvoicesController: invoicesController,
-		MovementsService:   movementService,
+		Config:              config,
+		Logger:              logger,
+		DB:                  db,
+		Echo:                echo,
+		MCPServer:           mcpServer,
+		MCPServerAPI:        mcpMCPServer,
+		HealthController:    healthController,
+		InvoicesController:  invoicesController,
+		MovementsController: movementsController,
+		MovementsService:    movementService,
 	}
 	return app, func() {
 		cleanup()
@@ -71,15 +74,16 @@ func InitializeApp(configFile string) (*App, func(), error) {
 
 // App holds the application's dependencies.
 type App struct {
-	Config             *config.Config
-	Logger             zerolog.Logger
-	DB                 *gorm.DB
-	Echo               *echo.Echo
-	MCPServer          *server.MCPServer
-	MCPServerAPI       *mcp.MCPServer // Added field for the API specific MCP server
-	HealthController   mcp.HealthController
-	InvoicesController mcp.InvoicesController
-	MovementsService   domain.MovementService
+	Config              *config.Config
+	Logger              zerolog.Logger
+	DB                  *gorm.DB
+	Echo                *echo.Echo
+	MCPServer           *server.MCPServer
+	MCPServerAPI        *mcp.MCPServer // Added field for the API specific MCP server
+	HealthController    mcp.HealthController
+	InvoicesController  mcp.InvoicesController
+	MovementsController mcp.MovementsController
+	MovementsService    domain.MovementService
 }
 
 // --- Core Providers ---
@@ -125,8 +129,8 @@ func ProvideMCP(cfg *config.Config) *server.MCPServer {
 }
 
 // Provider for the API specific MCPServer
-func ProvideMCPServerAPI(healthController mcp.HealthController, invoicesController mcp.InvoicesController) *mcp.MCPServer {
-	return mcp.NewMCPServer(healthController, invoicesController)
+func ProvideMCPServerAPI(healthController mcp.HealthController, invoicesController mcp.InvoicesController, movementsController mcp.MovementsController) *mcp.MCPServer {
+	return mcp.NewMCPServer(healthController, invoicesController, movementsController)
 }
 
 func ProvideHealthController() mcp.HealthController {
@@ -159,6 +163,10 @@ func ProvideInvoicesController(service ports.InvoiceService) mcp.InvoicesControl
 }
 
 // --- Movement Feature Providers ---
+func ProvideMovementsController(movementService domain.MovementService, logger zerolog.Logger) mcp.MovementsController {
+	return ports2.NewMCPMovementsHandler(movementService, logger)
+}
+
 func ProvideMovementSqlClient(db *gorm.DB, logger zerolog.Logger) *sql2.MovementSqlClient {
 	return sql2.NewMovementSqlClient(db, logger)
 }
@@ -197,6 +205,7 @@ var MovementFeatureSet = wire.NewSet(
 	ProvideMovementConverter,
 	ProvideMovementRepository,
 	ProvideMovementService,
+	ProvideMovementsController,
 )
 
 var AppSet = wire.NewSet(

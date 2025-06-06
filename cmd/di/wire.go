@@ -18,6 +18,7 @@ import (
 	movementsDomain "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain"
 	movementsPersistence "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence"
 	movementsSQL "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence/sql"
+	movementsPorts "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/ports"
 	pkgPersistence "github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -26,15 +27,16 @@ import (
 
 // App holds the application's dependencies.
 type App struct {
-	Config             *config.Config
-	Logger             zerolog.Logger
-	DB                 *gorm.DB
-	Echo               *echo.Echo
-	MCPServer          *mcpServerSdk.MCPServer
-	MCPServerAPI       *mcpAPI.MCPServer // Added field for the API specific MCP server
-	HealthController   mcpAPI.HealthController
-	InvoicesController mcpAPI.InvoicesController
-	MovementsService   movementsDomain.MovementService
+	Config              *config.Config
+	Logger              zerolog.Logger
+	DB                  *gorm.DB
+	Echo                *echo.Echo
+	MCPServer           *mcpServerSdk.MCPServer
+	MCPServerAPI        *mcpAPI.MCPServer // Added field for the API specific MCP server
+	HealthController    mcpAPI.HealthController
+	InvoicesController  mcpAPI.InvoicesController
+	MovementsController mcpAPI.MovementsController
+	MovementsService    movementsDomain.MovementService
 }
 
 // --- Core Providers ---
@@ -80,8 +82,8 @@ func ProvideMCP(cfg *config.Config) *mcpServerSdk.MCPServer {
 }
 
 // Provider for the API specific MCPServer
-func ProvideMCPServerAPI(healthController mcpAPI.HealthController, invoicesController mcpAPI.InvoicesController) *mcpAPI.MCPServer {
-	return mcpAPI.NewMCPServer(healthController, invoicesController)
+func ProvideMCPServerAPI(healthController mcpAPI.HealthController, invoicesController mcpAPI.InvoicesController, movementsController mcpAPI.MovementsController) *mcpAPI.MCPServer {
+	return mcpAPI.NewMCPServer(healthController, invoicesController, movementsController)
 }
 
 func ProvideHealthController() mcpAPI.HealthController {
@@ -114,6 +116,9 @@ func ProvideInvoicesController(service invoicePorts.InvoiceService) mcpAPI.Invoi
 }
 
 // --- Movement Feature Providers ---
+func ProvideMovementsController(movementService movementsDomain.MovementService, logger zerolog.Logger) mcpAPI.MovementsController {
+	return movementsPorts.NewMCPMovementsHandler(movementService, logger)
+}
 func ProvideMovementSqlClient(db *gorm.DB, logger zerolog.Logger) *movementsSQL.MovementSqlClient {
 	return movementsSQL.NewMovementSqlClient(db, logger)
 }
@@ -156,6 +161,7 @@ var MovementFeatureSet = wire.NewSet(
 	ProvideMovementConverter,
 	ProvideMovementRepository,
 	ProvideMovementService,
+	ProvideMovementsController,
 )
 
 var AppSet = wire.NewSet(

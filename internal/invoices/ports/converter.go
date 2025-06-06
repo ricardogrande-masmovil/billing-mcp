@@ -94,7 +94,7 @@ func (c Converter) ConvertRequestArgsToCriteria(args map[string]any) (domain.Cri
 }
 
 // ConvertInvoiceMovementsToJson converts a slice of InvoiceMovementDTO to JSON
-func (c Converter) ConvertInvoiceMovementsToJson(movements []InvoiceMovementDTO) ([]byte, error) {
+func (c Converter) ConvertInvoiceMovementsToJson(movements InvoiceMovementsDTO) ([]byte, error) {
 	jsonData, err := json.Marshal(movements)
 	if err != nil {
 		return nil, errors.New("invalid invoice movements")

@@ -32,15 +32,22 @@ func (h *MCPMovementsHandler) GetMovement(ctx context.Context, request mcpSdk.Ca
 	log := h.logger.With().Str("method", "GetMovement").Logger()
 	log.Debug().Msg("Processing GetMovement request")
 
-	// Extract accountId from request (we validate it but don't use it in this implementation)
-	accountIDStr, ok := request.Params.Arguments["accountId"].(string)
+	// Extract arguments map from request
+	args, ok := request.Params.Arguments.(map[string]interface{})
+	if !ok {
+		log.Error().Msg("Invalid arguments type in request")
+		return mcpSdk.NewToolResultErrorFromErr("Invalid arguments", fmt.Errorf("arguments must be a map")), nil
+	}
+
+	// Extract accountId from arguments (we validate it but don't use it in this implementation)
+	accountIDStr, ok := args["accountId"].(string)
 	if !ok || accountIDStr == "" {
 		log.Error().Msg("Missing or invalid accountId parameter")
 		return mcpSdk.NewToolResultErrorFromErr("Missing parameter", fmt.Errorf("accountId is required")), nil
 	}
 
-	// Extract movementId from request
-	movementIDStr, ok := request.Params.Arguments["movementId"].(string)
+	// Extract movementId from arguments
+	movementIDStr, ok := args["movementId"].(string)
 	if !ok || movementIDStr == "" {
 		log.Error().Msg("Missing or invalid movementId parameter")
 		return mcpSdk.NewToolResultErrorFromErr("Missing parameter", fmt.Errorf("movementId is required")), nil
