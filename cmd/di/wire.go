@@ -15,6 +15,10 @@ import (
 	invoicePersistence "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/infrastructure/persistence"
 	invoiceSQL "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/infrastructure/persistence/sql"
 	invoicePorts "github.com/ricardogrande-masmovil/billing-mcp/internal/invoices/ports"
+	movementsDomain "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/domain"
+	movementsPersistence "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence"
+	movementsSQL "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/infrastructure/persistence/sql"
+	movementsPorts "github.com/ricardogrande-masmovil/billing-mcp/internal/movements/ports"
 	pkgPersistence "github.com/ricardogrande-masmovil/billing-mcp/pkg/persistence"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,14 +27,16 @@ import (
 
 // App holds the application's dependencies.
 type App struct {
-	Config             *config.Config
-	Logger             zerolog.Logger
-	DB                 *gorm.DB
-	Echo               *echo.Echo
-	MCPServer          *mcpServerSdk.MCPServer
-	MCPServerAPI       *mcpAPI.MCPServer // Added field for the API specific MCP server
-	HealthController   mcpAPI.HealthController
-	InvoicesController mcpAPI.InvoicesController
+	Config              *config.Config
+	Logger              zerolog.Logger
+	DB                  *gorm.DB
+	Echo                *echo.Echo
+	MCPServer           *mcpServerSdk.MCPServer
+	MCPServerAPI        *mcpAPI.MCPServer // Added field for the API specific MCP server
+	HealthController    mcpAPI.HealthController
+	InvoicesController  mcpAPI.InvoicesController
+	MovementsController mcpAPI.MovementsController
+	MovementsService    movementsDomain.MovementService
 }
 
 // --- Core Providers ---
@@ -76,8 +82,8 @@ func ProvideMCP(cfg *config.Config) *mcpServerSdk.MCPServer {
 }
 
 // Provider for the API specific MCPServer
-func ProvideMCPServerAPI(healthController mcpAPI.HealthController, invoicesController mcpAPI.InvoicesController) *mcpAPI.MCPServer {
-	return mcpAPI.NewMCPServer(healthController, invoicesController)
+func ProvideMCPServerAPI(healthController mcpAPI.HealthController, invoicesController mcpAPI.InvoicesController, movementsController mcpAPI.MovementsController) *mcpAPI.MCPServer {
+	return mcpAPI.NewMCPServer(healthController, invoicesController, movementsController)
 }
 
 func ProvideHealthController() mcpAPI.HealthController {
@@ -109,6 +115,26 @@ func ProvideInvoicesController(service invoicePorts.InvoiceService) mcpAPI.Invoi
 	return invoicePorts.NewController(service)
 }
 
+// --- Movement Feature Providers ---
+func ProvideMovementsController(movementService movementsDomain.MovementService, logger zerolog.Logger) mcpAPI.MovementsController {
+	return movementsPorts.NewMCPMovementsHandler(movementService, logger)
+}
+func ProvideMovementSqlClient(db *gorm.DB, logger zerolog.Logger) *movementsSQL.MovementSqlClient {
+	return movementsSQL.NewMovementSqlClient(db, logger)
+}
+
+func ProvideMovementConverter() *movementsSQL.MovementConverter {
+	return movementsSQL.NewMovementConverter()
+}
+
+func ProvideMovementRepository(client *movementsSQL.MovementSqlClient, converter *movementsSQL.MovementConverter, logger zerolog.Logger) movementsDomain.MovementRepository {
+	return movementsPersistence.NewMovementSQLRepository(client, converter, logger)
+}
+
+func ProvideMovementService(logger zerolog.Logger, repo movementsDomain.MovementRepository) movementsDomain.MovementService {
+	return *movementsDomain.NewMovementService(logger, repo)
+}
+
 // --- Provider Sets ---
 var CoreSet = wire.NewSet(
 	ProvideConfig,
@@ -130,9 +156,18 @@ var InvoiceFeatureSet = wire.NewSet(
 	ProvideInvoicesController,
 )
 
+var MovementFeatureSet = wire.NewSet(
+	ProvideMovementSqlClient,
+	ProvideMovementConverter,
+	ProvideMovementRepository,
+	ProvideMovementService,
+	ProvideMovementsController,
+)
+
 var AppSet = wire.NewSet(
 	CoreSet,
 	InvoiceFeatureSet,
+	MovementFeatureSet,
 	wire.Struct(new(App), "*"),
 )
 

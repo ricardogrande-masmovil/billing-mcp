@@ -16,7 +16,7 @@ func (c InvoiceSqlConverter) ConvertInvoiceToDomain(invoice Invoice) (model.Invo
 	if err != nil {
 		return model.Invoice{}, err
 	}
-	
+
 	return model.Invoice{
 		ID:                    model.InvoiceID(invoice.ID),
 		AccountID:             invoice.AccountID,
@@ -42,7 +42,7 @@ func (c InvoiceSqlConverter) ConvertInvoicesToDomain(invoices []Invoice) ([]mode
 	return domainInvoices, nil
 }
 
-func (c InvoiceSqlConverter) ConvertCriteriaToSql(criteria model.Criteria) (map[string]interface{}) {
+func (c InvoiceSqlConverter) ConvertCriteriaToSql(criteria model.Criteria) map[string]interface{} {
 	sqlCriteria := make(map[string]interface{})
 
 	if criteria.Status != "" {
@@ -58,4 +58,16 @@ func (c InvoiceSqlConverter) ConvertCriteriaToSql(criteria model.Criteria) (map[
 	}
 
 	return sqlCriteria
+}
+
+// SQLLineToInvoiceLine converts a SQL model InvoiceLine to a domain InvoiceLine
+func (c InvoiceSqlConverter) SQLLineToInvoiceLine(line InvoiceLine) model.InvoiceLine {
+	return model.InvoiceLine{
+		MovementID:       line.MovementID,
+		Description:      line.Description,
+		AmountWithoutTax: line.AmountWithoutTax,
+		AmountWithTax:    line.AmountWithTax,
+		TaxPercentage:    line.TaxPercentage,
+		OperationType:    line.OperationType,
+	}
 }

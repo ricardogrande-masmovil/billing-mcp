@@ -17,17 +17,24 @@ type HealthController interface {
 type InvoicesController interface {
 	GetInvoice(ctx context.Context, request mcpSdk.CallToolRequest) (*mcpSdk.CallToolResult, error)
 	GetInvoices(ctx context.Context, request mcpSdk.CallToolRequest) (*mcpSdk.CallToolResult, error)
+	GetInvoiceMovements(ctx context.Context, request mcpSdk.CallToolRequest) (*mcpSdk.CallToolResult, error)
+}
+
+type MovementsController interface {
+	GetMovement(ctx context.Context, request mcpSdk.CallToolRequest) (*mcpSdk.CallToolResult, error)
 }
 
 type MCPServer struct {
 	HealthController
 	InvoicesController
+	MovementsController
 }
 
-func NewMCPServer(healthController HealthController, invoicesController InvoicesController) *MCPServer {
+func NewMCPServer(healthController HealthController, invoicesController InvoicesController, movementsController MovementsController) *MCPServer {
 	return &MCPServer{
-		HealthController:   healthController,
-		InvoicesController: invoicesController,
+		HealthController:    healthController,
+		InvoicesController:  invoicesController,
+		MovementsController: movementsController,
 	}
 }
 
@@ -53,4 +60,6 @@ func registerHandlers(e *echo.Echo, sse *serverSdk.SSEServer, mcp *MCPServer) {
 func registerTools(s *serverSdk.MCPServer, mcp *MCPServer) {
 	s.AddTool(invoiceTool, mcp.InvoicesController.GetInvoice)
 	s.AddTool(invoicesTool, mcp.InvoicesController.GetInvoices)
+	s.AddTool(invoiceMovementsTool, mcp.InvoicesController.GetInvoiceMovements)
+	s.AddTool(movementTool, mcp.MovementsController.GetMovement)
 }

@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	ErrInvalidInvoice      = errors.New("invalid invoice")
-	ErrInvalidInvoices     = errors.New("invalid invoices")
+	ErrInvalidInvoice        = errors.New("invalid invoice")
+	ErrInvalidInvoices       = errors.New("invalid invoices")
 	ErrInvalidStatusCriteria = errors.New("invalid status criteria")
-	ErrInvalidDateCriteria = errors.New("invalid date criteria")
+	ErrInvalidDateCriteria   = errors.New("invalid date criteria")
 )
 
 type Converter struct{}
@@ -91,4 +91,13 @@ func (c Converter) ConvertRequestArgsToCriteria(args map[string]any) (domain.Cri
 	}
 
 	return criteria, nil
+}
+
+// ConvertInvoiceMovementsToJson converts a slice of InvoiceMovementDTO to JSON
+func (c Converter) ConvertInvoiceMovementsToJson(movements InvoiceMovementsDTO) ([]byte, error) {
+	jsonData, err := json.Marshal(movements)
+	if err != nil {
+		return nil, errors.New("invalid invoice movements")
+	}
+	return jsonData, nil
 }

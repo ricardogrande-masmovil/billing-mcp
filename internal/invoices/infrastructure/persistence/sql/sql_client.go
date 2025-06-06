@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"context"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -61,6 +63,28 @@ func (c InvoiceSqlClient) GetInvoicesByAccountId(accountId string, criteria map[
 
 	c.logger.Info().Int("rows_affected", rowsAffected).Msg("Fetched invoices by criteria")
 	return
+}
+
+// GetInvoiceLinesByInvoiceID retrieves all invoice lines for a specific invoice
+func (c InvoiceSqlClient) GetInvoiceLinesByInvoiceID(ctx context.Context, invoiceID string) ([]InvoiceLine, error) {
+	c.logger.Info().Str("invoice_id", invoiceID).Msg("Fetching invoice lines by invoice ID")
+
+	var lines []InvoiceLine
+
+	queryFn := func() *gorm.DB {
+		return c.db.WithContext(ctx).
+			Where("invoice_id = ?", invoiceID).
+			Find(&lines)
+	}
+
+	_, err := c.RunWithRetry(queryFn, c.maxRetries)
+	if err != nil {
+		c.logger.Error().Err(err).Str("invoice_id", invoiceID).Msg("Failed to fetch invoice lines")
+		return nil, err
+	}
+
+	c.logger.Info().Str("invoice_id", invoiceID).Int("count", len(lines)).Msg("Successfully fetched invoice lines")
+	return lines, nil
 }
 
 func (c InvoiceSqlClient) RunWithRetry(queryFn func() *gorm.DB, retries int) (rowsAffected int, err error) {
